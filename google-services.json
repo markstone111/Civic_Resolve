@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "690861849074",
+    "project_id": "civicissuereportingapp",
+    "storage_bucket": "civicissuereportingapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:690861849074:android:e2881c72a9afd7326f536b",
+        "android_client_info": {
+          "package_name": "com.nikunj.civicissueapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATh0D9ZWp8xFwPIj_hBAtxqa5bb6I_-EQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
