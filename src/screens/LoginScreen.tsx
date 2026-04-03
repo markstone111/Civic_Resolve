@@ -196,7 +196,7 @@ import {
   Alert,
   TouchableOpacity,
 } from "react-native";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/src/firebase/firebaseconfig";
 import { Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -204,48 +204,37 @@ import { useTranslation } from 'react-i18next';
 import { db } from "@/src/firebase/firebaseconfig";
 import { doc, getDoc } from "firebase/firestore";
 
-
 export default function LoginScreen({ navigation }) {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // const handleLogin = async () => {
-  //   try {
-  //     await signInWithEmailAndPassword(auth, email, password);
-  //     Alert.alert("Success", "Logged in successfully");
-  //   } catch (error) {
-  //     Alert.alert("Error", "Invalid email or password");
-  //   }
-  // };
-
-
   const handleLogin = async () => {
-  try {
-    const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
-    const user = userCred.user;
-
-    // fetch role from Firestore
-    const docRef = doc(db, "users", user.uid);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-      const role = docSnap.data().role || "user";
-      // store role in AsyncStorage or Context
-      globalThis.userRole = role; // quick demo, better to use Context
-    } else {
-      globalThis.userRole = "user"; // fallback
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      // Wait for layout auth listener to route
+    } catch (error) {
+      Alert.alert("Error", "Invalid email or password");
     }
+  };
 
-    Alert.alert("Success", "Logged in successfully");
-  } catch (error) {
-    Alert.alert("Error", "Invalid email or password");
-  }
-};
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert("Enter Email", "Please enter your email address to reset password.");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      Alert.alert("Email Sent", "Check your inbox for the password reset link.");
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Failed to send reset email.");
+    }
+  };
 
   return (
     <>
-      <Stack.Screen options={{ title: "Login" }} />
+      <Stack.Screen options={{ title: "Login", headerShown: false }} />
       <View style={styles.container}>
         <Text style={styles.heading}>Login</Text>
 
@@ -264,6 +253,10 @@ export default function LoginScreen({ navigation }) {
           onChangeText={setPassword}
           secureTextEntry
         />
+
+        <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPassword}>
+          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Ionicons name="lock-closed" size={18} color="#fff" style={{ marginRight: 6 }} />
@@ -311,6 +304,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 25,
     marginTop: 10,
+  },
+
+  forgotPassword: {
+    alignSelf: "flex-end",
+    marginBottom: 20,
+  },
+
+  forgotPasswordText: {
+    color: "#488a3bff",
+    fontSize: 14,
+    fontWeight: "600",
   },
 
   loginText: {

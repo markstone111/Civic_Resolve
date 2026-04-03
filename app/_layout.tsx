@@ -47,11 +47,10 @@ export default function RootLayout() {
       router.replace('/(auth)/login');
     } else if (user && inAuthGroup) {
       // Redirect to appropriate Home based on role
-      if (role === "fieldworker") {
-        // Fieldworker group not fully migrated yet, so route to tabs temporarily
-         router.replace('/(tabs)/dashboard');
+      if (role === "fieldworker" || role === "admin") {
+         router.replace('/(worker-tabs)/dashboard');
       } else {
-         router.replace('/(tabs)/dashboard');
+         router.replace('/(citizen-tabs)/dashboard');
       }
     }
   }, [user, initializing, segments, role]);
@@ -63,7 +62,8 @@ export default function RootLayout() {
     <PointsProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(citizen-tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(worker-tabs)" options={{ headerShown: false }} />
       </Stack>
     </PointsProvider>
   );

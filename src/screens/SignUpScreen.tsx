@@ -61,7 +61,8 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/src/firebase/firebaseconfig";
+import { auth, db } from "@/src/firebase/firebaseconfig";
+import { doc, setDoc } from "firebase/firestore";
 
 export default function SignUpScreen({ navigation }) {
   const [email, setEmail] = useState("");
@@ -69,10 +70,17 @@ export default function SignUpScreen({ navigation }) {
 
   const handleSignUp = async () => {
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Immediately create their user profile as a default citizen
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        email: userCredential.user.email,
+        role: "citizen",
+        createdAt: new Date().toISOString()
+      });
       Alert.alert("Success", "Account created successfully");
       navigation.navigate("Login");
     } catch (error) {
+      console.error(error);
       Alert.alert("Error", "Failed to create account");
     }
   };
