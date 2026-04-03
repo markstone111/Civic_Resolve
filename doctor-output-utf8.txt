@@ -1,0 +1,43 @@
+﻿Running 17 checks on your project...
+13/17 checks passed. 4 checks failed. Possible issues detected:
+Use the --verbose flag to see more details about passed checks.
+
+Γ£û Check Expo config (app.json/ app.config.js) schema
+Errors validating asset fields in C:\Users\nikun\OneDrive\Documents\Projects_ideas\Projects\civic-issue-app\app.json:
+ Field: Android.adaptiveIcon.foregroundImage - cannot access file at './assets/images/adaptive-icon.png'.
+Advice:
+Resolve schema errors in your app config. Learn more: https://docs.expo.dev/workflow/configuration/
+
+Γ£û Check dependencies for packages that should not be installed directly
+The package "expo-firebase-core" has been removed as of SDK 48. You should use the Firebase JS SDK or React Native Firebase directly. Learn more: https://expo.fyi/firebase-migration-guide
+Advice:
+Remove these packages from your package.json.
+
+Γ£û Check that native modules use compatible support package versions for installed Expo SDK
+Expected package @expo/config-plugins@~10.1.1
+Found invalid:
+  @expo/config-plugins@5.0.4
+  (for more info, run: npm why @expo/config-plugins)
+Expected package @expo/metro-config@~0.20.18
+Found invalid:
+  @expo/metro-config@0.20.17
+  (for more info, run: npm why @expo/metro-config)
+Advice:
+Upgrade dependencies that are using the invalid package versions.
+
+Γ£û Check that packages match versions required by installed Expo SDK
+The following packages should be updated for best compatibility with the installed expo version:
+  @react-native-async-storage/async-storage@1.24.0 - expected version: 2.1.2
+  expo@53.0.22 - expected version: ~53.0.27
+  expo-constants@17.1.7 - expected version: ~17.1.8
+  expo-image@2.4.0 - expected version: ~2.4.1
+  expo-localization@17.0.7 - expected version: ~16.1.6
+  expo-router@5.1.5 - expected version: ~5.1.11
+  @react-navigation/bottom-tabs@^7.4.7 - expected version: ^7.3.10
+  @react-navigation/native@^7.1.17 - expected version: ^7.1.6
+Your project may not work correctly until you install the expected versions of the packages.
+Found outdated dependencies
+Advice:
+Use 'npx expo install --check' to review and upgrade your dependencies.
+To ignore specific packages, add them to "expo.install.exclude" in package.json. Learn more: https://expo.fyi/dependency-validation
+
