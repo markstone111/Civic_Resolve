@@ -248,29 +248,42 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
-import { auth } from "../firebase/firebaseconfig";
+import { auth, db } from "../firebase/firebaseconfig";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { Stack, useFocusEffect } from "expo-router";
-import axios from "axios";
 
 export default function Dashboard() {
   const [issues, setIssues] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchIssues = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get("http://172.17.32.117:5000/issues");
-      setIssues(response.data.issues);
-    } catch (error) {
-      console.error("Failed to fetch issues", error);
-    } finally {
+  const fetchIssues = () => {
+    setLoading(true);
+    const user = auth.currentUser;
+    if (!user) {
       setLoading(false);
+      return;
     }
+
+    // Set up realtime listener for this specific citizen's issues
+    const q = query(collection(db, "issues"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const issuesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setIssues(issuesList);
+      setLoading(false);
+    }, (error) => {
+      console.error("Failed to fetch issues", error);
+      setLoading(false);
+    });
+
+    return unsubscribe;
   };
 
   useFocusEffect(
     useCallback(() => {
-      fetchIssues();
+      const unsub = fetchIssues();
+      return () => {
+        if (unsub) unsub();
+      };
     }, [])
   );
 
@@ -290,7 +303,7 @@ export default function Dashboard() {
         </TouchableOpacity> */}
 
         {/* Welcome */}
-        <Text style={styles.welcome}>Welcome, Mark!</Text>
+        <Text style={styles.welcome}>Welcome, {auth.currentUser?.email?.split('@')[0] || 'Citizen'}!</Text>
         <Text style={styles.subHeading}>Dashboard</Text>
 
         {/* Stats Row */}
@@ -329,7 +342,7 @@ export default function Dashboard() {
                 <Text style={styles.reportText}>
                   {item.status === "resolved" ? "✅ " : "🕒 "}
                   Your issue{" "}
-                  <Text style={styles.issueLink}>{item.type}</Text>{" "}
+                  <Text style={styles.issueLink}>{item.type || item.category}</Text>{" "}
                   {item.status === "resolved"
                     ? "was resolved"
                     : item.status === "in-progress"
@@ -337,7 +350,7 @@ export default function Dashboard() {
                     : "was reported"}
                 </Text>
                 <Text style={styles.reportDate}>
-                  {item.date || "on Oct 20"}
+                  Severity Score: {item.severityScore}/10
                 </Text>
               </View>
             )}
