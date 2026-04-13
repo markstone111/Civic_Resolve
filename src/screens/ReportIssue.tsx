@@ -312,11 +312,15 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import axios from "axios";
 import { usePoints } from "../context/PointsContext";
+import { analyzeCivicIssue } from "../services/geminiService";
+import { db, auth } from "../firebase/firebaseconfig";
+import { collection, addDoc } from "firebase/firestore";
 
 export default function ReportIssue() {
   const { addPoints } = usePoints();
     
   const [image, setImage] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     null
@@ -337,11 +341,13 @@ export default function ReportIssue() {
     let result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      quality: 0.7,
+      quality: 0.5, // slightly compressed for Gemini API limits
+      base64: true,
     });
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
+      setImageBase64(result.assets[0].base64 || null);
     }
   };
 
@@ -361,6 +367,7 @@ export default function ReportIssue() {
   const submitIssue = async () => {
     if (
       !image ||
+      !imageBase64 ||
       !description ||
       !location ||
       !selectedCategory ||
@@ -368,7 +375,7 @@ export default function ReportIssue() {
     ) {
       Alert.alert(
         "Missing info",
-        "Please complete all fields before submitting."
+        "Please complete all fields (including capturing a photo) before submitting."
       );
       return;
     }
@@ -376,25 +383,31 @@ export default function ReportIssue() {
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("photo", {
-        uri: image,
-        name: "issue.jpg",
-        type: "image/jpeg",
-      } as any);
-      formData.append("description", description);
-      formData.append("lat", location.lat.toString());
-      formData.append("lng", location.lng.toString());
-      formData.append("user_id", "201");
-      formData.append("category", selectedCategory);
-      formData.append("type", selectedType);
+      // 1. AI Triage - Get severity score from Gemini
+      const severityScore = await analyzeCivicIssue(imageBase64, selectedCategory, description);
 
-      await axios.post("http://172.17.32.117:5000/issues", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      // 2. Save directly to Firebase Firestore
+      const user = auth.currentUser;
+      const uid = user ? user.uid : "anonymous";
+      
+      await addDoc(collection(db, "issues"), {
+        imageUrl: image, // in production we'd upload this to Firebase Storage. Using local URI for demo.
+        description,
+        location: { lat: location.lat, lng: location.lng },
+        userId: uid,
+        category: selectedCategory,
+        type: selectedType,
+        severityScore,
+        status: "pending",
+        createdAt: new Date().toISOString()
       });
+
       addPoints(10); // reward 10 points for reporting an issue
-      Alert.alert("Success ✅", "Your issue has been reported.");
+      Alert.alert("Success ✅", `Issue recorded! AI Severity Score: ${severityScore}/10`);
+      
+      // reset form
       setImage(null);
+      setImageBase64(null);
       setDescription("");
       setLocation(null);
       setSelectedCategory("");
