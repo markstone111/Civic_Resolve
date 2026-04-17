@@ -315,9 +315,12 @@ import { usePoints } from "../context/PointsContext";
 import { analyzeCivicIssue } from "../services/geminiService";
 import { db, auth } from "../firebase/firebaseconfig";
 import { collection, addDoc } from "firebase/firestore";
+import { useDisaster } from "../context/DisasterContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ReportIssue() {
   const { addPoints } = usePoints();
+  const { isDisasterMode } = useDisaster();
     
   const [image, setImage] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -383,28 +386,51 @@ export default function ReportIssue() {
     setLoading(true);
 
     try {
-      // 1. AI Triage - Get severity score from Gemini
-      const severityScore = await analyzeCivicIssue(imageBase64, selectedCategory, description);
+      if (isDisasterMode) {
+        // Disaster Mode: Bypass network & AI, queue locally immediately!
+        const offlineReport = {
+          id: Date.now().toString(),
+          imageUrl: image, // Store URI for now
+          imageBase64: imageBase64,
+          description,
+          location: { lat: location.lat, lng: location.lng },
+          category: selectedCategory,
+          type: selectedType,
+          severityScore: 10, // Immediate max-severity fallback offline
+          status: "pending",
+          createdAt: new Date().toISOString(),
+        };
 
-      // 2. Save directly to Firebase Firestore
-      const user = auth.currentUser;
-      const uid = user ? user.uid : "anonymous";
-      
-      await addDoc(collection(db, "issues"), {
-        imageUrl: image, // in production we'd upload this to Firebase Storage. Using local URI for demo.
-        description,
-        location: { lat: location.lat, lng: location.lng },
-        userId: uid,
-        category: selectedCategory,
-        type: selectedType,
-        severityScore,
-        status: "pending",
-        createdAt: new Date().toISOString()
-      });
+        const existing = await AsyncStorage.getItem("OFFLINE_QUEUE_ISSUES");
+        const queue = existing ? JSON.parse(existing) : [];
+        queue.push(offlineReport);
+        await AsyncStorage.setItem("OFFLINE_QUEUE_ISSUES", JSON.stringify(queue));
 
-      addPoints(10); // reward 10 points for reporting an issue
-      Alert.alert("Success ✅", `Issue recorded! AI Severity Score: ${severityScore}/10`);
-      
+        Alert.alert("🚨 Offline Queue Active", "Network bypassed. Your critical report has been saved locally and will upload when synced.");
+        
+      } else {
+        // Normal Mode: AI Triage & Cloud Sync
+        const severityScore = await analyzeCivicIssue(imageBase64, selectedCategory, description);
+
+        const user = auth.currentUser;
+        const uid = user ? user.uid : "anonymous";
+
+        await addDoc(collection(db, "issues"), {
+          imageUrl: image,
+          description,
+          location: { lat: location.lat, lng: location.lng },
+          userId: uid,
+          category: selectedCategory,
+          type: selectedType,
+          severityScore,
+          status: "pending",
+          createdAt: new Date().toISOString(),
+        });
+
+        addPoints(10);
+        Alert.alert("Success ✅", `Issue recorded! AI Severity Score: ${severityScore}/10`);
+      }
+
       // reset form
       setImage(null);
       setImageBase64(null);

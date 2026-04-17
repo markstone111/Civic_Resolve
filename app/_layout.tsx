@@ -4,6 +4,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../src/firebase/firebaseconfig";
 import { PointsProvider } from "../src/context/PointsContext";
+import { DisasterProvider } from "../src/context/DisasterContext";
+import GlobalDisasterBanner from "../src/components/GlobalDisasterBanner";
 import "../src/i18n";
 
 export default function RootLayout() {
@@ -59,12 +61,15 @@ export default function RootLayout() {
   if (initializing) return null;
 
   return (
-    <PointsProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(citizen-tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(worker-tabs)" options={{ headerShown: false }} />
-      </Stack>
-    </PointsProvider>
+    <DisasterProvider>
+      <PointsProvider>
+        <GlobalDisasterBanner />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(citizen-tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(worker-tabs)" options={{ headerShown: false }} />
+        </Stack>
+      </PointsProvider>
+    </DisasterProvider>
   );
 }

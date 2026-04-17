@@ -249,11 +249,13 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { auth, db } from "../firebase/firebaseconfig";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, addDoc } from "firebase/firestore";
 import { Stack, useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Dashboard() {
   const [issues, setIssues] = useState<any[]>([]);
+  const [offlineQueue, setOfflineQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchIssues = () => {
@@ -278,14 +280,50 @@ export default function Dashboard() {
     return unsubscribe;
   };
 
+  const loadOfflineQueue = async () => {
+    try {
+      const existing = await AsyncStorage.getItem("OFFLINE_QUEUE_ISSUES");
+      if (existing) {
+        setOfflineQueue(JSON.parse(existing));
+      }
+    } catch (e) {
+      console.error("Failed to load queue", e);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       const unsub = fetchIssues();
+      loadOfflineQueue();
       return () => {
         if (unsub) unsub();
       };
     }, [])
   );
+
+  const syncQueueToCloud = async () => {
+    setLoading(true);
+    let successCount = 0;
+    try {
+      for (const issue of offlineQueue) {
+        const { id, imageBase64, ...firestorePayload } = issue;
+        await addDoc(collection(db, "issues"), {
+          ...firestorePayload,
+          userId: auth.currentUser?.uid || "anonymous"
+        });
+        successCount++;
+      }
+      
+      await AsyncStorage.removeItem("OFFLINE_QUEUE_ISSUES");
+      setOfflineQueue([]);
+      alert(`Successfully synced ${successCount} queued issues to the Cloud!`);
+    } catch (error) {
+      console.error("Sync error:", error);
+      alert("Failed to sync queue. Please ensure stable internet and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
@@ -319,6 +357,19 @@ export default function Dashboard() {
             <Text style={styles.statLabel}>Issues Resolved</Text>
           </View>
         </View>
+
+        {/* Offline Queue Sync Card */}
+        {offlineQueue.length > 0 && (
+          <View style={styles.syncCard}>
+            <Text style={styles.syncCardTitle}>🚨 Data Sync Required</Text>
+            <Text style={styles.syncCardText}>
+              You have {offlineQueue.length} issue(s) recorded offline during Disaster Mode.
+            </Text>
+            <TouchableOpacity style={styles.syncButton} onPress={syncQueueToCloud}>
+              <Text style={styles.syncButtonText}>Sync to Cloud</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>Your Past Reports</Text>
 
@@ -416,4 +467,21 @@ const styles = StyleSheet.create({
   resolved: { borderLeftWidth: 4, borderLeftColor: "#2ecc71" },
   inProgress: { borderLeftWidth: 4, borderLeftColor: "#3498db" },
   pending: { borderLeftWidth: 4, borderLeftColor: "#f1c40f" },
+  syncCard: {
+    backgroundColor: '#ffdbdb',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#ff4d4f'
+  },
+  syncCardTitle: { fontSize: 16, fontWeight: 'bold', color: '#b30000', marginBottom: 6 },
+  syncCardText: { color: '#b30000', marginBottom: 12 },
+  syncButton: {
+    backgroundColor: '#b30000',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center'
+  },
+  syncButtonText: { color: 'white', fontWeight: 'bold' }
 });
