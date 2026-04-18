@@ -19,16 +19,24 @@ export default function RootLayout() {
     const unsubscribe = onAuthStateChanged(auth, async (usr) => {
       if (usr) {
         try {
+          // 1. Check Custom Claims (Highly Scalable & Secure)
+          const tokenResult = await usr.getIdTokenResult(true); // true forces token refresh
+          const claimRole = tokenResult.claims.role as string | undefined;
+
+          // 2. Fallback to Firestore (For Legacy Users / Citizens)
           const docRef = doc(db, "users", usr.uid);
           const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setRole(docSnap.data().role || "user");
+
+          if (claimRole) {
+            setRole(claimRole);
+          } else if (docSnap.exists()) {
+            setRole(docSnap.data().role || "citizen");
           } else {
-            setRole("user");
+            setRole("citizen");
           }
         } catch (e) {
           console.error("Error fetching role: ", e);
-          setRole("user");
+          setRole("citizen");
         }
       } else {
         setRole(null);

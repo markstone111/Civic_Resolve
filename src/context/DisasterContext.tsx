@@ -13,17 +13,21 @@ export const DisasterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isDisasterMode, setIsDisasterMode] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+
     // 1. Initial State Fetch
     const fetchInitialState = async () => {
       const { data, error } = await supabase
         .from("disaster_control")
         .select("is_disaster")
+        .eq("id", 1)
         .limit(1);
 
-      if (data && data.length > 0) {
+      if (mounted && data && data.length > 0) {
         setIsDisasterMode(data[0].is_disaster);
-      } else {
-        console.warn("Disaster mode fetch returned 0 rows. (Check Supabase RLS policies if row exists!)");
+        console.log("Disaster Initial State Loaded:", data[0].is_disaster);
+      } else if (mounted) {
+        console.warn("Disaster mode fetch returned 0 rows for ID=1. (Check Supabase RLS policies if row exists!)");
       }
       if (error) console.error("Error fetching disaster mode:", error);
     };
@@ -37,14 +41,19 @@ export const DisasterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         "postgres_changes",
         { event: "*", schema: "public", table: "disaster_control" },
         (payload: any) => {
-          if (payload.new && payload.new.id === 1) {
+          console.log("Supabase Realtime Payload Received:", payload);
+          if (payload.new && payload.new.id == 1) {
             setIsDisasterMode(payload.new.is_disaster);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Supabase Subscription Status Update:", status);
+      });
 
     return () => {
+      mounted = false;
+      console.log("Cleaning up Supabase Websocket Channel...");
       supabase.removeChannel(channel);
     };
   }, []);
