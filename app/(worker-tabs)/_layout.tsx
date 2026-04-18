@@ -16,6 +16,20 @@ export default function WorkerTabsLayout() {
           tabBarIcon: ({ color }) => <Ionicons name="list" size={24} color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="map"
+        options={{
+          title: "Operations Map",
+          tabBarIcon: ({ color }) => <Ionicons name="map" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} />,
+        }}
+      />
     </Tabs>
   );
 }
